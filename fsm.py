@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from __future__ import print_function
 import pandas as pd
 import sys
@@ -151,15 +152,36 @@ def create_fsmfun(H):
     print("\t}")                     
     print("}")
 
-def main(fname):
-    sys.stdout = open("fsm_example.c", "w")
-    H=pd.read_excel(fname,"Transition")
+def main():
+    import argparse
+    parser=argparse.ArgumentParser()
+    parser.add_argument('-i','--inp',default=False, help='input xlsx file containing the transition table')
+    parser.add_argument('-o','--out',default=False, help='output .c-file containing the FSM code')
+    args=parser.parse_args()
+    sys.stdout = open(args.out+".c", "w")
+    H=pd.read_excel(args.inp+'.xlsx',"Transition")
+    print(
+"""
+/****************************************************
+File created with fsm_coder python script by M.Birkner
+https://github.com/mbirkner/fsm_coder.git
+****************************************************/
+
+""")
     create_enums(H)
     create_actions(H)
     create_guards(H)
     create_fsmfun(H)
-    print("void main() {\n\tfsm();\n}")
+    print(
+"""
+void main() {
+        while(1) {
+            fsm();
+        }
+}""")
     sys.stdout.close()
 
-main("Example.xlsx")
+
+if __name__=='__main__':
+    main()
 
