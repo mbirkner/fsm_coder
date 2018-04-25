@@ -10,5 +10,6 @@ I use this script for simple AVR state machines to create the behavioural framew
 
 Usage:
 $./fsm.py -i inputfile -o outputfile
-where inputfile (w/o extension) is the name of the xlsx file with a "Transition" sheet containing the transition table shown in the example. The table headings need to be present(state1,input,guard,action, next state)!
+where inputfile (w/o extension) is the name of the xlsx file with a "Transition" sheet containing the transition table shown in the example. The table headings need to be present(state1,input,guard,event, action, next state)!All transition conditions (input,guard,event) are combined with logical AND(&&).
+
 outputfile(w/o extension) is the name of the .c file which is created by the script.
