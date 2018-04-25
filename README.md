@@ -8,5 +8,7 @@ type definitions, guard and action function skeletons, as well as a simple fsm (
 I use this script for simple AVR state machines to create the behavioural framework before starting coding.
 
 
-ToDos:
-command line args for script
+Usage:
+$./fsm.py -i inputfile -o outputfile
+where inputfile (w/o extension) is the name of the xlsx file with a "Transition" sheet containing the transition table shown in the example. The table headings need to be present(state1,input,guard,action, next state)!
+outputfile(w/o extension) is the name of the .c file which is created by the script.
