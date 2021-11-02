@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!python
 from __future__ import print_function
 import pandas as pd
 import sys
@@ -57,7 +57,7 @@ def create_enums(H,fout):
 
     
     
-def create_actions(H,fout):
+def create_actions(H,fout,impl=False):
     print( "/**********************",file=fout)
     print ("********* ACTIONS ******",file=fout)
     print ("***********************/",file=fout)
@@ -67,12 +67,16 @@ def create_actions(H,fout):
         a=str(a)
         if  a=='nan':
             continue
-        print ("void "+a.strip()+"();",file=fout)
+        if not impl:
+            print ("void "+a.strip()+"();",file=fout)
+        else:
+            print ("void "+a.strip()+"(){\n}",file=fout)
+
         #print ("}")
         print(file=fout)
-    print("void fsm();",file=fout)
+    if not impl: print("void fsm();",file=fout)
         
-def create_guards(H,fout):
+def create_guards(H,fout,impl=False):
     print ("/**********************",file=fout)
     print ("********* GUARDS ******",file=fout)
     print ("***********************/",file=fout)
@@ -82,7 +86,11 @@ def create_guards(H,fout):
         a=str(a)
         if  a=='nan':
             continue
-        print("char "+a.strip()+"();",file=fout)
+        if not impl: 
+            print("char "+a.strip()+"();",file=fout)
+        else:
+            print("char "+a.strip()+"(){\n}",file=fout)
+
         #print("}")
         print(file=fout)
 
@@ -231,7 +239,8 @@ def main():
     args=parser.parse_args()
     #sys.stdout = open(args.out+".c", "w")
     fout = open(args.out+".c","w")
-    fhead = open(args.out+".h","w")    
+    fhead = open(args.out+".h","w")   
+    fwork= open(args.out+'_worker.c',"w") 
     H=pd.read_excel(args.inp+'.xlsx',"Transition")
 
     
@@ -260,10 +269,27 @@ https://github.com/mbirkner/fsm_coder.git
 #define FSM_INC
 """,file=fhead)
 
-    
+    print(
+"""
+/****************************************************
+File created with fsm_coder python script by M.Birkner
+https://github.com/mbirkner/fsm_coder.git
+****************************************************/
+
+#include "fsm.h"
+
+enum event_t event;
+enum input_t input;
+enum state_t state;
+""",file=fwork)
+
+  
     create_enums(H,fhead)
     create_actions(H,fhead)
     create_guards(H,fhead)
+    create_actions(H,fwork,True)
+    create_guards(H,fwork,True)
+
     create_fsmfun(H,fout)
 ##    print(
 ##"""
@@ -276,6 +302,7 @@ https://github.com/mbirkner/fsm_coder.git
     fhead.write("#endif")
     fout.close()
     fhead.close()
+    fwork.close()
 
 if __name__=='__main__':
     main()
