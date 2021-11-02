@@ -3,14 +3,14 @@ from __future__ import print_function
 import pandas as pd
 import sys
 
-def create_enums(H):
-    print ("/**********************")
-    print ("********* TYPES ******")
-    print ("***********************/")
-    print
-    P=H['input'].unique()
+def create_enums(H,fout):
+    print ("/**********************",file=fout)
+    print ("********* TYPES ******",file=fout)
+    print ("***********************/",file=fout)
+    print(file=fout)
+    P=H['input'].append(H['post input']).unique()
     ni = len(P)-1
-    print ("enum input_t {")
+    print ("enum input_t {",file=fout)
     for x in P:
         x=str(x)
         k=""
@@ -18,14 +18,14 @@ def create_enums(H):
             k="\t"+x.strip()
             ni-=1
             if ni>0: k+=","
-            print(k)
-    print("};")
-    print()
-    print("enum input_t input;")
-    print()
-    P=H['event'].unique()
+            print(k,file=fout)
+    print("};",file=fout)
+    print("\n",file=fout)
+    print("extern enum input_t input;",file=fout)
+    print(file=fout)
+    P=H['event'].append(H['post event']).unique()
     ni = len(P)-1
-    print ("enum event_t {")
+    print ("enum event_t {",file=fout)
     for x in P:
         x=str(x)
         k=""
@@ -33,75 +33,136 @@ def create_enums(H):
             k="\t"+x.strip()
             ni-=1
             if ni>0: k+=","
-            print(k)
-    print("};")
-    print()
-    print("enum event_t event;")
-    print()
+            print(k,file=fout)
+    print("};",file=fout)
+    print(file=fout)
+    print("extern enum event_t event;",file=fout)
+    print(file=fout)
 
     P=H['state1'].append(H['next state'])
     P=P.unique()
     ni = len(P)
-    print ("enum state_t {")
+    print ("enum state_t {",file=fout)
     for x in P:
         x=str(x)
         k=""
-        if not x=="nan":
+        if not (x=="nan" or x=="any"):
             k="\t"+x.strip()
             ni-=1
             if ni>0: k+=","
-            print(k)
-    print("};")
-    print()
-    print("enum state_t state;")
-    print()
+            print(k,file=fout)
+    print("};",file=fout)
+    print("extern enum state_t state;",file=fout)
+    print(file=fout)
 
     
     
-def create_actions(H):
-    print( "/**********************")
-    print ("********* ACTIONS ******")
-    print ("***********************/")
-    print
+def create_actions(H,fout):
+    print( "/**********************",file=fout)
+    print ("********* ACTIONS ******",file=fout)
+    print ("***********************/",file=fout)
+    print("\n")
     P=H['action'].unique()
     for a in P:
         a=str(a)
         if  a=='nan':
             continue
-        print ("void "+a.strip()+"() {")
-        print ("}")
-        print()
+        print ("void "+a.strip()+"();",file=fout)
+        #print ("}")
+        print(file=fout)
+    print("void fsm();",file=fout)
         
-def create_guards(H):
-    print ("/**********************")
-    print ("********* GUARDS ******")
-    print ("***********************/")
-    print
+def create_guards(H,fout):
+    print ("/**********************",file=fout)
+    print ("********* GUARDS ******",file=fout)
+    print ("***********************/",file=fout)
+    print(file=fout)
     P=H['guard'].unique()
     for a in P:
         a=str(a)
         if  a=='nan':
             continue
-        print("char "+a.strip()+"() {")
-        print("}")
-        print()
+        print("char "+a.strip()+"();",file=fout)
+        #print("}")
+        print(file=fout)
 
+def do_anystates(H,fout):
+    P=H[H['state1']=="any"]
+    
+    nc=0
+    for i,x in P.iterrows():
+      #  print x
+        R=3*[False]
+        nc=0
+        e=str(x['event'])
+        if not e=='nan':
+            R[0]=True
+            nc+=1
+        g=str(x['guard'])
+        if not g=='nan':
+            R[1]=True
+            nc+=1
+        j=str(x['input'])
+        if not j=='nan':
+            R[2]=True
+            nc+=1
+        if nc==0:
+            raise("state transition for  needs to have at least 1 condition.")
+        a=str(x['action'])
+        n=str(x['next state'])
+        pe= str(x['post event'])
+        pi = str(x['post input'])
+        #print e,g,j,a,n
+        k=""
+        if R[0]:
+            k+="(event=="+e+")"
+            nc-=1
+            if nc>0: k+="&&"
+        if R[1]:
+            k+=" "+g.strip()+"() " 
+            nc-=1
+            if nc>0: k+="&&"
+        if R[2]:
+            k+="(input=="+j+")" 
+            
+        #print k
+        print ("\t\tif ("+k+")  {",file=fout)
+        if not a=='nan':
+            print ('\t\t\t'+a.strip()+"();",file=fout)
+        if not n=='nan':
+            if not n=="any":
+                print("\t\t\tstate="+n+";",file=fout)
+        if not pi=='nan':
+            if not pi==j:
+                print("\t\t\tinput="+pi+";",file=fout)
+        if not pe=='nan':
+            if not pe==e:
+                print("\t\t\tevent="+pe+";",file=fout)
+        print ('\t\t}',file=fout)
+            
         
-def create_fsmfun(H):
-    print( "/**********************")
-    print ("********* FSM ******")
-    print ("***********************/")
+        
+def create_fsmfun(H,fout):
+    print( "/**********************",file=fout)
+    print ("********* FSM ******",file=fout)
+    print ("***********************/",file=fout)
     print
 
     states1 = H['state1'].unique()
 
-    print ("void fsm() {")
+    print ("void fsm() {",file=fout)
 
-    print ("\tswitch (state) {")
+
+    if "any" in states1:
+        do_anystates(H,fout)
+    
+
+    print ("\tswitch (state) {",file=fout)
 
 
     for s in states1:
-        print ("\tcase "+s+": ")
+        if s=="any": continue
+        print ("\tcase ("+s+"): ",file=fout)
         P=H[H['state1']==s]
         #print P
         nc=0
@@ -125,6 +186,9 @@ def create_fsmfun(H):
                 raise("state transition for  needs to have at least 1 condition.")
             a=str(x['action'])
             n=str(x['next state'])
+            pe= str(x['post event'])
+            pi = str(x['post input'])
+
             #print e,g,j,a,n
             k=""
             if R[0]:
@@ -139,18 +203,25 @@ def create_fsmfun(H):
                 k+="(input=="+j+")" 
                 
             #print k
-            print ("\t\tif ("+k+")  {")
+            print ("\t\tif ("+k+")  {",file=fout)
             if not a=='nan':
-                print ('\t\t\t'+a.strip()+"();")
+                print ('\t\t\t'+a.strip()+"();",file=fout)
             if not n=='nan':
                 if not n==s:
-                    print("\t\t\t state="+n+";")
-                print ('\t\t}')
-                
-        print("\t\tbreak;")
+                    print("\t\t\t state="+n+";",file=fout)
+            if not pi=='nan':
+                if not pi==j:
+                    print("\t\t\tinput="+pi+";",file=fout)
+            if not pe=='nan':
+                if not pe==e:
+                    print("\t\t\tevent="+pe+";",file=fout)
+
+            print ('\t\t}',file=fout)
+            
+        print("\t\tbreak;",file=fout)
         
-    print("\t}")                     
-    print("}")
+    print("\t}",file=fout)                     
+    print("}",file=fout)
 
 def main():
     import argparse
@@ -158,8 +229,12 @@ def main():
     parser.add_argument('-i','--inp',default=False, help='input xlsx file containing the transition table')
     parser.add_argument('-o','--out',default=False, help='output .c-file containing the FSM code')
     args=parser.parse_args()
-    sys.stdout = open(args.out+".c", "w")
+    #sys.stdout = open(args.out+".c", "w")
+    fout = open(args.out+".c","w")
+    fhead = open(args.out+".h","w")    
     H=pd.read_excel(args.inp+'.xlsx',"Transition")
+
+    
     print(
 """
 /****************************************************
@@ -167,21 +242,40 @@ File created with fsm_coder python script by M.Birkner
 https://github.com/mbirkner/fsm_coder.git
 ****************************************************/
 
-""")
-    create_enums(H)
-    create_actions(H)
-    create_guards(H)
-    create_fsmfun(H)
+#include "fsm.h"
+
+enum event_t event;
+enum input_t input;
+enum state_t state;
+""",file=fout)
+
     print(
 """
-void main() {
-        while(1) {
-            fsm();
-        }
-}""")
-    sys.stdout.close()
+/****************************************************
+File created with fsm_coder python script by M.Birkner
+https://github.com/mbirkner/fsm_coder.git
+****************************************************/
 
+#ifndef FSM_INC
+#define FSM_INC
+""",file=fhead)
+
+    
+    create_enums(H,fhead)
+    create_actions(H,fhead)
+    create_guards(H,fhead)
+    create_fsmfun(H,fout)
+##    print(
+##"""
+##void main() {
+##        while(1) {
+##            fsm();
+##        }
+##}""")
+##    sys.stdout.close()
+    fhead.write("#endif")
+    fout.close()
+    fhead.close()
 
 if __name__=='__main__':
     main()
-
